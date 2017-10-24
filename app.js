@@ -58,10 +58,18 @@ let gitcommit = () => {
     let stringdata = JSON.stringify(posts);
     ghrepo.contents('_data/tracks.json', function (err, data, headers) {
         console.log("error: " + err);
-        let sha = data.sha;
-        ghrepo.updateContents('_data/tracks.json', 'update tracks.json', stringdata, sha, function (err, data, headers) {
-            console.log("error: " + err);
-        });
+        console.log(data)
+        if (typeof data == 'undefined' || typeof data === null) {
+            ghrepo.createContents('_data/tracks.json', 'update tracks.json', stringdata, function (err, data, headers) {
+                console.log("error: " + err);
+                console.log("data: " + JSON.stringify(data));
+            });
+        } else {
+            let sha = data.sha;
+            ghrepo.updateContents('_data/tracks.json', 'update tracks.json', stringdata, sha, function (err, data, headers) {
+                console.log("error: " + err);
+            });
+        }
     });
     //create file
     /* ghrepo.createContents('_data/tracks.json', 'update tracks.json', stringdata, function (err, data, headers) {
