@@ -15,9 +15,9 @@ let file = '/var/discourse/api/tracks.json'
 
 let getIDs = async (more_url) => {
     if (more_url == '') {
-        query = "https://talk.pdis.nat.gov.tw/c/pdis-site/how-we-work-track.json";
+        query = "http://talk.pdis.nat.gov.tw/c/pdis-site/how-we-work-track.json";
     } else {
-        query = "https://talk.pdis.nat.gov.tw" + more_url.replace(/\?page/, '.json?page');
+        query = "http://talk.pdis.nat.gov.tw" + more_url.replace(/latest/, 'latest.json');
     }
     let response = await fetch(query);
     let data = await response.json()
@@ -37,7 +37,7 @@ let getPosts = async () => { // 取得單篇PO文
     topics = topics.filter((topic, i) => topic != '73')
     for (let id of topics) {
         try {
-            let response = await fetch('https://talk.pdis.nat.gov.tw/t/' + id + ".json?include_raw=1")
+            let response = await fetch('http://talk.pdis.nat.gov.tw/t/' + id + ".json?include_raw=1")
             let data = await response.json()
             let post = {};
             post['id'] = data['id']

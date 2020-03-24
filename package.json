@@ -1,0 +1,26 @@
+{
+  "name": "discourse-track-crawler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PDIS/discourse-track-crawler.git"
+  },
+  "author": "Xanxus",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PDIS/discourse-track-crawler/issues"
+  },
+  "homepage": "https://github.com/PDIS/discourse-track-crawler#readme",
+  "dependencies": {
+    "config": "^1.27.0",
+    "jsonfile": "^4.0.0",
+    "node-fetch": "^1.7.3",
+    "octonode": "^0.9.1",
+    "yamljs": "^0.3.0"
+  }
+}
