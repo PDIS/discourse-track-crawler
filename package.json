@@ -19,7 +19,7 @@
   "dependencies": {
     "config": "^1.27.0",
     "jsonfile": "^4.0.0",
-    "node-fetch": "^1.7.3",
+    "node-fetch": "^2.6.1",
     "octonode": "^0.9.1",
     "yamljs": "^0.3.0"
   }
