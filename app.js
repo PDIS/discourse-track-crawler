@@ -11,19 +11,19 @@ let ghrepo = client.repo('PDIS/web-jekyll');
 let more_url = '';
 let topics = [];
 let posts = [];
-let file = '/var/discourse/assets/tracks.json'
+let file = '/var/discourse/api/tracks.json'
 
 let getIDs = async (more_url) => {
     if (more_url == '') {
         query = "http://talk.pdis.nat.gov.tw/c/pdis-site/how-we-work-track.json";
     } else {
-        query = "http://talk.pdis.nat.gov.tw" + more_url.replace(/latest/, 'latest.json');
+        query = "http://talk.pdis.nat.gov.tw" + more_url.replace(/\?page/, '.json?page');
     }
     let response = await fetch(query);
     let data = await response.json()
     more_url = data.topic_list.more_topics_url || ''
     let topics_tmp = data.topic_list.topics
-    topics_tmp.splice(0,1) // remove first post (duplicated)
+    // topics_tmp.splice(0,1) // remove first post (duplicated)
     topics_tmp.map(t => topics.push(t.id))
     if (more_url != '') { // recursively getIDs
         let ids = await getIDs(more_url);
@@ -32,9 +32,9 @@ let getIDs = async (more_url) => {
 
 let getPosts = async () => { // 取得單篇PO文
     // * remove duplicated post
-    // topics = topics.filter((topic, i) => array.indexOf(topic) === i)
+    topics = topics.filter((topic, i) => topics.indexOf(topic) === i)
     // * remove "definition" post
-    // topics = topics.filter((topic, i) => topic != '73')
+    topics = topics.filter((topic, i) => topic != '73')
     for (let id of topics) {
         try {
             let response = await fetch('http://talk.pdis.nat.gov.tw/t/' + id + ".json?include_raw=1")
@@ -58,6 +58,23 @@ let updateFile = () => {
     jsonfile.writeFile(file, posts, function (err) {
         console.error(err)
     })
+    // * trigger GitHub Actions workflow API
+    fetch('https://api.github.com/repos/PDIS/web-jekyll/actions/workflows/github-pages-deploy.yml/dispatches', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/vnd.github.v3+json',
+            'Authorization': 'token ' + token
+        },
+        body: '{"ref": "master"}'
+    })
+    .then(res => {
+        if (res.status == 204) {
+            console.log('done')
+        } else {
+	    console.log(res.statusText)
+        }
+    });
 }
 
 let gitcommit = () => {
