@@ -1,63 +1,80 @@
-const fetch = require('node-fetch');
-const jsonfile = require('jsonfile')
-const YAML = require('yamljs');
-const github = require('octonode');
-const config = require('config');
+// import fetch from 'node-fetch';
+import jsonfile from 'jsonfile';
+import YAML from 'yamljs';
+import axios from 'axios';
+// const github = require('octonode');
+// const config = require('config');
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
-let token = config.get('token');
-let client = github.client(token);
-let ghrepo = client.repo('PDIS/web-jekyll');
-
-let more_url = '';
+// let token = config.get('token');
+// let client = github.client(token);
+// let ghrepo = client.repo('PDIS/web-jekyll');
+let discourse_site_url = 'https://talk.pdis.nat.gov.tw';
+let category_name = 'pdis-site/how-we-work-track';
+let remove_posts = [73] // remove "definition" post
+let file = './tracks.json';
 let topics = [];
 let posts = [];
-let file = '/var/discourse/api/tracks.json'
 
-let getIDs = async (more_url) => {
-    if (more_url == '') {
-        query = "http://talk.pdis.nat.gov.tw/c/pdis-site/how-we-work-track.json";
+let getIDs = async (more_url = "") => {
+    let query = '';
+    if (more_url.includes("page")) {
+        query = discourse_site_url + more_url.replace(/\?page/, '.json?page');
     } else {
-        query = "http://talk.pdis.nat.gov.tw" + more_url.replace(/\?page/, '.json?page');
+        query = `${discourse_site_url}/c/${category_name}.json`;
     }
-    let response = await fetch(query);
-    let data = await response.json()
-    more_url = data.topic_list.more_topics_url || ''
-    let topics_tmp = data.topic_list.topics
-    // topics_tmp.splice(0,1) // remove first post (duplicated)
+    console.log(`fetching url: ${query}`); // print query url
+    let response = await axios.get(query)
+    let data = response.data
+    let topics_tmp = data.topic_list.topics;
     topics_tmp.map(t => topics.push(t.id))
+    // check if there's more pages to fetch
+    more_url = data.topic_list.more_topics_url || '';
     if (more_url != '') { // recursively getIDs
-        let ids = await getIDs(more_url);
+        await delay(500); // wait for next fetch
+        await getIDs(more_url);
     }
 }
 
 let getPosts = async () => { // 取得單篇PO文
     // * remove duplicated post
-    topics = topics.filter((topic, i) => topics.indexOf(topic) === i)
+    topics = topics.filter((topic, i) => topics.indexOf(topic) === i);
     // * remove "definition" post
-    topics = topics.filter((topic, i) => topic != '73')
+    topics = topics.filter((topic) => remove_posts.indexOf(topic) == -1);
     for (let id of topics) {
         try {
-            let response = await fetch('http://talk.pdis.nat.gov.tw/t/' + id + ".json?include_raw=1")
-            let data = await response.json()
+            let response = await axios.get(`${discourse_site_url}/t/${id}.json?include_raw=1`);
+            let data = await response.data;
             let post = {};
-            post['id'] = data['id']
+            post['id'] = data['id'];
             post['title'] = data['title'];
-            post['date'] = await new Date(data['created_at'].toString()).toISOString().substring(0, 10);
+            post['date'] = new Date(data['created_at'].toString()).toISOString().substring(0, 10); // 2022-02-22
             post['tags'] = data['tags'];
             let raw = data['post_stream']['posts'][0]['raw'];
             post['content'] = YAML.parse(raw)['content'];
             posts.push(post);
+            console.log(`Post found: ${post.title}`); // print post content
+            await delay(500); // wait for next fetch
         }
         catch(e) {
-            console.error(e)
+            console.error(`getPost err: ${e}`);
         }
     }
 }
 
 let updateFile = () => {
-    jsonfile.writeFile(file, posts, function (err) {
-        console.error(err)
+    // save file locally
+    jsonfile.writeFile(file, posts, function (e) {
+        if (e) {
+          console.error(`updateFile err: ${e}`);
+        }
+        else {
+          console.log('wrote file successfully')
+        }
     })
+}
+
+let triggerGithub = () => {
     // * trigger GitHub Actions workflow API
     fetch('https://api.github.com/repos/PDIS/web-jekyll/actions/workflows/github-pages-deploy.yml/dispatches', {
         method: 'POST',
@@ -82,7 +99,7 @@ let gitcommit = () => {
     ghrepo.contents('_data/tracks.json', function (err, data, headers) {
         console.error("error: " + err);
         if (typeof data == 'undefined' || typeof data === null) {
-            ghrepo.createContents('_data/tracks.json', 'update tracks.json', stringdata, function (err, data, headers) {
+            ghrepo.createContents('_data/tracks.json', 'create tracks.json', stringdata, function (err, data, headers) {
                 console.error("error: " + err);
                 console.error("data: " + JSON.stringify(data));
             });
@@ -95,5 +112,8 @@ let gitcommit = () => {
     });
 }
 
-// getIDs(more_url).then(getPosts).then(gitcommit)
-getIDs(more_url).then(getPosts).then(updateFile)
+getIDs()
+  .then(getPosts)
+  .then(updateFile)
+  // .then(triggerGithub)
+  // .then(gitcommit)

@@ -1,0 +1,2 @@
+# discourse crawler
+A simple script in order to fetch all the pages of topics in certain discourse category, and save it as a json file.
